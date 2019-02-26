@@ -1,0 +1,243 @@
+---
+ - hosts: vmtest
+   vars_prompt:
+   - name: "ipadd"
+     prompt: "Enter the IP address of the ESXi managment interface (you created this on install)"
+     private: no
+   - name: "hstnm"
+     prompt: "Enter the ESXi hostname (you created this on install)"
+     private: no
+   - name: "password"
+     prompt: "Enter the ESXi root passwordi (will not echo)"
+     private: yes
+   - name: "iscsi1"
+     prompt: "Enter an address for the iSCSI1 interface"
+     private: no
+   - name: "iscsi2"
+     prompt: "Enter an address for the iSCSI2 interface"
+     private: no
+   - name: "vmotionip"
+     prompt: "Enter an address for the vMotion interface"
+     private: no
+   tasks:
+   - name: Create vSwitch
+     vmware_vswitch:
+      hostname: "{{ ipadd }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      switch: vSwitch0
+      nics:
+      - vmnic0
+      - vmnic1
+     delegate_to: localhost
+   - name: Create vSwitch
+     vmware_vswitch:
+      hostname: "{{ ipadd }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      switch: vSwitch1
+      nics:
+      - vmnic2
+      - vmnic3
+      mtu: 9000
+     delegate_to: localhost
+   - name: Create vSwitch
+     vmware_vswitch:
+      hostname: "{{ ipadd }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      switch: vSwitch2
+      nics:
+      - vmnic4
+     delegate_to: localhost
+   - name: Create PortGroup
+     vmware_portgroup:
+      hostname: "{{ ipadd }}"
+      hosts: "{{ hstnm }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      switch_name: vSwitch0
+      portgroup_name: Hosted-IBMFEED
+      vlan_id: 28
+      network_policy:
+        promiscuous_mode: False
+      teaming_policy:
+        load_balance_policy: loadbalance_ip
+     delegate_to: localhost
+   - name: Create PortGroup
+     vmware_portgroup:
+      hostname: "{{ ipadd }}"
+      hosts: "{{ hstnm }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      switch_name: vSwitch0
+      portgroup_name: Hosted-Kraken
+      vlan_id: 27
+      network_policy:
+        promiscuous_mode: False
+      teaming_policy:
+        load_balance_policy: loadbalance_ip
+     delegate_to: localhost
+   - name: Create PortGroup
+     vmware_portgroup:
+      hostname: "{{ ipadd }}"
+      hosts: "{{ hstnm }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      switch_name: vSwitch0
+      portgroup_name: Hosted-CumulusWeb
+      vlan_id: 26
+      network_policy:
+        promiscuous_mode: False
+      teaming_policy:
+        load_balance_policy: loadbalance_ip
+     delegate_to: localhost
+   - name: Create PortGroup
+     vmware_portgroup:
+      hostname: "{{ ipadd }}"
+      hosts: "{{ hstnm }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      switch_name: vSwitch0
+      portgroup_name: Hosted-CumulusAPI
+      vlan_id: 25
+      network_policy:
+        promiscuous_mode: False
+      teaming_policy:
+        load_balance_policy: loadbalance_ip
+     delegate_to: localhost
+   - name: Create PortGroup
+     vmware_portgroup:
+      hostname: "{{ ipadd }}"
+      hosts: "{{ hstnm }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      switch_name: vSwitch0
+      portgroup_name: 99 Network
+      vlan_id: 0
+      network_policy:
+        promiscuous_mode: False
+      teaming_policy:
+        load_balance_policy: loadbalance_ip
+     delegate_to: localhost
+   - name: Create PortGroup
+     vmware_portgroup:
+      hostname: "{{ ipadd }}"
+      hosts: "{{ hstnm }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      switch_name: vSwitch2
+      portgroup_name: vMotion
+      vlan_id: 4
+      network_policy:
+        promiscuous_mode: False
+      teaming_policy:
+        load_balance_policy: loadbalance_ip
+     delegate_to: localhost
+   - name: Create PortGroup
+     vmware_portgroup:
+      hostname: "{{ ipadd }}"
+      hosts: "{{ hstnm }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      switch_name: vSwitch1
+      portgroup_name: iSCSI1
+      vlan_id: 0
+      network_policy:
+        promiscuous_mode: False
+      teaming_policy:
+       # failover_order:
+       # activeNic:
+       #   - vmnic2
+       # standby_nics:
+        load_balance_policy: loadbalance_ip
+     delegate_to: localhost
+   - name: Create PortGroup
+     vmware_portgroup:
+      hostname: "{{ ipadd }}"
+      hosts: "{{ hstnm }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      switch_name: vSwitch1
+      portgroup_name: iSCSI2
+      vlan_id: 0
+      network_policy:
+        promiscuous_mode: False
+      teaming_policy:
+       #failover_order:
+       # active_nics:
+       #   - vmnic3
+       # standby-nics:
+        load_balance_policy: loadbalance_ip
+     delegate_to: localhost
+   - name: Create VMK NIC
+     vmware_vmkernel:
+      hostname: "{{ ipadd }}"
+      esxi_hostname: "{{ hstnm }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      vswitch_name: vSwitch2
+      portgroup_name: vMotion
+      vlan_id: 4
+      network:
+        type: 'static'
+        ip_address: "{{vmotionip}}"
+        subnet_mask: 255.255.255.0
+      enable_vmotion: yes
+      enable_ft: no
+      enable_mgmt: no
+      enable_vsan: no
+      mtu: 1500
+     delegate_to: localhost
+   - name: Create VMK NIC
+     vmware_vmkernel:
+      hostname: "{{ ipadd }}"
+      esxi_hostname: "{{ hstnm }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      vswitch_name: vSwitchr1
+      portgroup_name: iSCSI1
+      vlan_id: 4
+      network:
+        type: 'static'
+        ip_address: "{{ iscsi1 }}"
+        subnet_mask: 255.255.255.0
+      enable_vmotion: no
+      enable_ft: no
+      enable_mgmt: no
+      enable_vsan: no
+      mtu: 9000
+     delegate_to: localhost
+   - name: Create VMK NIC
+     vmware_vmkernel:
+      hostname: "{{ ipadd }}"
+      esxi_hostname: "{{ hstnm }}"
+      username: root
+      password: "{{ password }}"
+      validate_certs: False
+      vswitch_name: vSwitchr1
+      portgroup_name: iSCSI2
+      vlan_id: 4
+      network:
+        type: 'static'
+        ip_address: "{{ iscsi2 }}"
+        subnet_mask: 255.255.255.0
+      enable_vmotion: no
+      enable_ft: no
+      enable_mgmt: no
+      enable_vsan: no
+      mtu: 9000
+     delegate_to: localhost
